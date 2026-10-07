@@ -1,0 +1,20 @@
+# =============================================================
+# PodDisruptionBudget — stm-localizacao
+# Garante que pelo menos 1 réplica esteja sempre disponível
+# durante manutenções planejadas (drain de node, upgrades, etc.)
+# =============================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: stm-localizacao-pdb
+  namespace: ms
+  labels:
+    app: stm-localizacao
+    component: disruption-budget
+    managed-by: kubectl
+    org: stm
+spec:
+  minAvailable: 1   # Sempre mantém ao menos 1 pod rodando
+  selector:
+    matchLabels:
+      app: stm-localizacao

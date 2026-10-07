@@ -1,0 +1,13 @@
+# =============================================================
+# Namespace compartilhado entre todos os microsserviços STM
+# Utilizado por: stm-localizacao, stm-localizacao, stm-render,
+#                stm-localizacao, stm-sei-integration, etc.
+# =============================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: microservicos
+  labels:
+    name: microservicos
+    managed-by: kubectl
+    org: stm

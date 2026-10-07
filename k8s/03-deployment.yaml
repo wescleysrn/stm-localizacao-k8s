@@ -1,0 +1,175 @@
+# =============================================================
+# Deployment — stm-localizacao
+# =============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stm-localizacao
+  namespace: microservicos
+  labels:
+    app: stm-localizacao
+    version: "1.0.0"
+    component: auth-server
+    managed-by: kubectl
+    org: stm
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+spec:
+  # ---------------------------------------------------------
+  # Réplicas — ajuste conforme necessidade de HA
+  # ---------------------------------------------------------
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: stm-localizacao
+
+  # ---------------------------------------------------------
+  # Estratégia de atualização sem downtime
+  # ---------------------------------------------------------
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Sobe 1 pod novo antes de derrubar o antigo
+      maxUnavailable: 0  # Nunca deixa réplicas indisponíveis durante update
+
+  template:
+    metadata:
+      labels:
+        app: stm-localizacao
+        version: "1.0.0"
+      annotations:
+        # Força restart do pod quando ConfigMap ou Secret mudam
+        checksum/config: "{{ sha256sum .Values.config }}"
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8080"
+
+    spec:
+      # ---------------------------------------------------------
+      # Segurança — não rodar como root (alinhado com Dockerfile)
+      # ---------------------------------------------------------
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000   # usuário spring criado no Dockerfile
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: stm-localizacao
+          # Altere para o endereço do seu Nexus/registry
+          image: nexus.stm.jus.br/docker-hosted/cdesc/stm-localizacao-rs:latest
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          # ---------------------------------------------------------
+          # Variáveis de ambiente — ConfigMap (não-sensível)
+          # ---------------------------------------------------------
+          envFrom:
+            - configMapRef:
+                name: stm-localizacao-config
+
+          # ---------------------------------------------------------
+          # Variáveis de ambiente — Secret (sensível)
+          # ---------------------------------------------------------
+          env:
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stm-localizacao-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+
+          # ---------------------------------------------------------
+          # Probes — alinhadas com start-period=120s do Dockerfile
+          # ---------------------------------------------------------
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 15  # 30 + (15*10) = 180s de tolerância
+            successThreshold: 1
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: 15
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 5
+
+          # ---------------------------------------------------------
+          # Recursos — ajuste conforme sizing do cluster
+          # ---------------------------------------------------------
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+
+          # ---------------------------------------------------------
+          # Segurança do container
+          # ---------------------------------------------------------
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Spring precisa escrever temp files
+            capabilities:
+              drop:
+                - ALL
+
+      # ---------------------------------------------------------
+      # Garante que pods sejam espalhados entre nodes
+      # ---------------------------------------------------------
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: stm-localizacao
+
+      # ---------------------------------------------------------
+      # Affinity — evita múltiplos pods no mesmo node
+      # ---------------------------------------------------------
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - stm-localizacao
+                topologyKey: kubernetes.io/hostname
+
+      # ---------------------------------------------------------
+      # Pull de imagem do Nexus privado
+      # ---------------------------------------------------------
+      imagePullSecrets:
+        - name: nexus-registry-secret
+
+      # ---------------------------------------------------------
+      # Graceful shutdown
+      # ---------------------------------------------------------
+      terminationGracePeriodSeconds: 60
+
+      restartPolicy: Always

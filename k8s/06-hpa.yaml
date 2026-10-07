@@ -1,0 +1,62 @@
+# =============================================================
+# HorizontalPodAutoscaler — stm-localizacao
+# Escala automaticamente entre 2 e 5 réplicas com base em
+# CPU e memória. Requer metrics-server instalado no cluster.
+# =============================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: stm-localizacao
+  namespace: ms
+  labels:
+    app: stm-localizacao
+    component: autoscaler
+    managed-by: kubectl
+    org: stm
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: stm-localizacao
+
+  minReplicas: 2
+  maxReplicas: 5
+
+  metrics:
+    # ---------------------------------------------------------
+    # Escala por CPU
+    # ---------------------------------------------------------
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70  # Escala quando CPU > 70%
+
+    # ---------------------------------------------------------
+    # Escala por Memória
+    # ---------------------------------------------------------
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80  # Escala quando Memória > 80%
+
+  # ---------------------------------------------------------
+  # Comportamento de escalonamento
+  # Sobe rápido, desce devagar (evita flapping)
+  # ---------------------------------------------------------
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300   # 5 min antes de descer
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120

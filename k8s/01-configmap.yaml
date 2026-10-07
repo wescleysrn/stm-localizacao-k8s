@@ -1,0 +1,65 @@
+# =============================================================
+# ConfigMap — stm-localizacao
+# Contém todas as variáveis de configuração não-sensíveis.
+# Variáveis sensíveis (senhas, tokens) estão no Secret.
+# =============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stm-localizacao-config
+  namespace: microservicos
+  labels:
+    app: stm-localizacao
+    component: config
+    managed-by: kubectl
+    org: stm
+data:
+  # =========================================================
+  # SERVER
+  # =========================================================
+  RESOURCE-SERVER-PORT: "8080"
+
+  # =========================================================
+  # DATASOURCE / HIKARI
+  # =========================================================
+  SPRING_DATASOURCE_MAXIMUM_POOL_SIZE: "20"
+  SPRING_DATASOURCE_MINIMUM_IDLE: "5"
+  SPRING_DATASOURCE_CONNECTION_TIMEOUT: "30000"
+  SPRING_DATASOURCE_IDLE_TIMEOUT: "600000"
+  SPRING_DATASOURCE_MAX_LIFETIME: "1800000"
+
+  SPRING_DATASOURCE_DRIVER_CLASS_NAME: "com.mysql.cj.jdbc.Driver"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://172.16.0.101:3308/db-localizacao"
+  SPRING_DATASOURCE_USERNAME: "user_localizacao"
+
+  # =========================================================
+  # JPA / HIBERNATE
+  # =========================================================
+  SPRING_JPA_HIBERNATE_DIALECT: "org.hibernate.dialect.MySQLDialect"
+  SPRING_JPA_HIBERNATE_GENERATE_STATISTICS: "true"
+  SPRING_JPA_HIBERNATE_FORMAT_SQL: "true"
+  SPRING_JPA_SHOW_SQL: "true"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "none"
+
+  # =========================================================
+  # LOGGING
+  # =========================================================
+  LOGGING_SPRING_WEB: "DEBUG"
+  LOGGING_SPRING_BOOT: "DEBUG"
+  LOGGING_SPRING_SECURITY: "DEBUG"
+  LOGGING_SPRING_ORM_JPA: "DEBUG"
+
+  LOGGING_HIBERNATE_SQL: "DEBUG"
+  LOGGING_HIBERNATE_STAT: "DEBUG"
+  LOGGING_HIBERNATE_SQL_PARAM: "TRACE"
+
+  # =========================================================
+  # SPRINGDOC / SWAGGER
+  # =========================================================
+  SWAGGER_ENABLED: "true"
+
+  # =========================================================
+  # MONITORING
+  # =========================================================
+  MONITORING_ENDPOINTS: "health,metrics,info,prometheus"
+  MONITORING_PROMETHEUS: "true"

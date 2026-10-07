@@ -1,0 +1,65 @@
+# =============================================================
+# Ingress — stm-localizacao
+# Expõe o serviço externamente via NGINX Ingress Controller.
+# TLS gerenciado pelo cert-manager (ou certificado manual).
+# =============================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stm-localizacao
+  namespace: microservicos
+  labels:
+    app: stm-localizacao
+    component: ingress
+    managed-by: kubectl
+    org: stm
+  annotations:
+    # ---------------------------------------------------------
+    # NGINX Ingress Controller
+    # ---------------------------------------------------------
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+
+    # ---------------------------------------------------------
+    # Headers de segurança
+    # ---------------------------------------------------------
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "Referrer-Policy: no-referrer";
+
+    # ---------------------------------------------------------
+    # TLS — via cert-manager (comente se usar certificado manual)
+    # ---------------------------------------------------------
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # Se o cluster não tiver acesso à internet, use o issuer interno:
+    # cert-manager.io/cluster-issuer: "internal-ca-issuer"
+
+spec:
+  ingressClassName: nginx
+
+  # ---------------------------------------------------------
+  # TLS
+  # ---------------------------------------------------------
+  tls:
+    - hosts:
+        - localizacao-homolog.stm.jus.br
+      secretName: stm-microservicos-tls
+
+  # ---------------------------------------------------------
+  # Regras de roteamento
+  # ---------------------------------------------------------
+  rules:
+    - host: localizacao-homolog.stm.jus.br
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stm-localizacao-svc
+                port:
+                  name: http

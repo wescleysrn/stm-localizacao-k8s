@@ -1,0 +1,29 @@
+# =============================================================
+# Service — stm-localizacao
+# ClusterIP para acesso interno entre microsserviços.
+# O acesso externo é feito via Ingress (ver 05-ingress.yaml).
+# =============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: stm-localizacao-svc
+  namespace: microservicos
+  labels:
+    app: stm-localizacao
+    component: service
+    managed-by: kubectl
+    org: stm
+  annotations:
+    # Prometheus descobre o serviço automaticamente
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/actuator/prometheus"
+    prometheus.io/port: "8080"
+spec:
+  type: ClusterIP
+  selector:
+    app: stm-localizacao
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080      # referencia o named port do container (8080)

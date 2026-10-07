@@ -1,0 +1,59 @@
+# =============================================================
+# ServiceAccount — stm-localizacao
+# Isola a identidade do pod. Boa prática de segurança:
+# cada microsserviço tem seu próprio ServiceAccount.
+# =============================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: stm-localizacao-sa
+  namespace: ms
+  labels:
+    app: stm-localizacao
+    component: rbac
+    managed-by: kubectl
+    org: stm
+automountServiceAccountToken: false  # Não monta token por padrão (least privilege)
+
+---
+# =============================================================
+# Role — permissões mínimas dentro do namespace ms
+# =============================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: stm-localizacao-role
+  namespace: ms
+  labels:
+    app: stm-localizacao
+    component: rbac
+    managed-by: kubectl
+    org: stm
+rules:
+  # Permite ler ConfigMaps e Secrets do próprio namespace
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+
+---
+# =============================================================
+# RoleBinding — vincula o ServiceAccount à Role
+# =============================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: stm-localizacao-rolebinding
+  namespace: ms
+  labels:
+    app: stm-localizacao
+    component: rbac
+    managed-by: kubectl
+    org: stm
+subjects:
+  - kind: ServiceAccount
+    name: stm-localizacao-sa
+    namespace: ms
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: stm-localizacao-role
